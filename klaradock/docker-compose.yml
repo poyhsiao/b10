@@ -1,0 +1,397 @@
+version: '2'
+
+services:
+
+### Applications Code Container #############################
+
+    applications:
+        image: tianon/true
+        volumes:
+            - ../n20/:/var/www/n20
+            - ../front/:/var/www/front
+            - ../myadm/:/var/www/myadm
+
+### Workspace Utilities Container ###########################
+
+    workspace:
+        build:
+            context: ./workspace
+            args:
+                - INSTALL_XDEBUG=true
+                - INSTALL_MONGO=true
+                - INSTALL_NODE=true
+                - INSTALL_YARN=false
+                - INSTALL_DRUSH=false
+                - INSTALL_AEROSPIKE_EXTENSION=false
+                - INSTALL_SUPERVISOR=false
+                - COMPOSER_GLOBAL_INSTALL=true
+                - INSTALL_WORKSPACE_SSH=true
+                - INSTALL_PHATOMJS=false
+                - PUID=1000
+                - PGID=1000
+                - NODE_VERSION=6
+                - TZ=Asia/Taipei
+        volumes_from:
+            - applications
+        extra_hosts:
+            # IMPORTANT: Replace with your Docker Host IP (will be appended to /etc/hosts)
+            - "dockerhost:10.0.75.1"
+        ports:
+           - "2222:22"
+        tty: true
+        networks:
+          - frontend
+          - backend
+
+### PHP-FPM Container #######################################
+# disable opcache in dev environment to prevent file cache issue
+#
+###
+    php-fpm:
+        build:
+            context: ./php-fpm
+            args:
+                - INSTALL_XDEBUG=true
+                - INSTALL_MONGO=true
+                - INSTALL_ZIP_ARCHIVE=true
+                - INSTALL_MEMCACHED=true
+                - INSTALL_OPCACHE=true
+                - INSTALL_AEROSPIKE_EXTENSION=false
+                - CODEIGNITER=true
+                - INSTALL_IMAGEMAGICK_EXTENSION=true
+            dockerfile: Dockerfile-71
+        volumes_from:
+            - applications
+        expose:
+            - "9000"
+        links:
+            - workspace
+        extra_hosts:
+            # IMPORTANT: Replace with your Docker Host IP (will be appended to /etc/hosts)
+            - "dockerhost:10.0.75.1"
+        environment:
+            # IMPORTANT: Set the Remote Interpreter entry matching name to `laravel`
+            - PHP_IDE_CONFIG=serverName=laravel
+        networks:
+          - backend
+
+### Nginx Server Container ##################################
+
+    nginx:
+        build:
+            context: ./nginx
+            args:
+              - PHP_UPSTREAM=php-fpm
+        volumes_from:
+            - applications
+        volumes:
+            - ./logs/nginx/:/var/log/nginx
+            - ./nginx/sites/:/etc/nginx/sites-enabled
+            - ./nginx/ssl/:/etc/nginx/ssl
+        ports:
+            - "80:80"
+            - "443:443"
+        links:
+            - php-fpm
+        networks:
+          - frontend
+          - backend
+
+### Apache Server Container #################################
+
+    apache2:
+        build:
+            context: ./apache2
+            args:
+                - PHP_SOCKET=php-fpm:9000
+        volumes_from:
+            - applications
+        volumes:
+            - ./logs/apache2:/var/log/apache2
+        ports:
+            - "80:80"
+            - "443:443"
+        links:
+            - php-fpm
+        networks:
+          - frontend
+          - backend
+
+### HHVM Container ##########################################
+
+    hhvm:
+        build: ./hhvm
+        volumes_from:
+            - applications
+        expose:
+            - "9000"
+        links:
+            - workspace
+        networks:
+          - frontend
+          - backend
+
+### MySQL Container #########################################
+
+    mysql:
+        build: ./mysql
+        volumes:
+            - ./storage/mysql:/var/lib/mysql
+        ports:
+            - "3306:3306"
+        environment:
+            MYSQL_DATABASE: homestead
+            MYSQL_USER: kimhsiao
+            MYSQL_PASSWORD: 1234
+            MYSQL_ROOT_PASSWORD: 1234
+        networks:
+          - backend
+
+### MariaDB Container #######################################
+
+    mariadb:
+        build: ./mariadb
+        volumes:
+            - ./storage/mysql:/var/lib/mysql
+        ports:
+            - "3306:3306"
+        environment:
+            MYSQL_DATABASE: homestead
+            MYSQL_USER: kimhsiao
+            MYSQL_PASSWORD: 1234
+            MYSQL_ROOT_PASSWORD: 1234
+        networks:
+          - backend
+
+### PostgreSQL Container ####################################
+
+    postgres:
+        build: ./postgres
+        volumes:
+            - ./stroage/postgres:/var/lib/postgresql/data
+        ports:
+            - "5432:5432"
+        environment:
+            POSTGRES_DB: homestead
+            POSTGRES_USER: kimhsiao
+            POSTGRES_PASSWORD: 1234
+        networks:
+          - backend
+
+### Neo4j Container #########################################
+
+    neo4j:
+        build: ./neo4j
+        ports:
+            - "7474:7474"
+            - "1337:1337"
+        environment:
+            - NEO4J_AUTH=homestead:1234
+        volumes:
+            - ./storage/neo4j:/var/lib/neo4j/data
+        networks:
+          - backend
+
+### MongoDB Container #######################################
+
+    mongo:
+        build: ./mongo
+        ports:
+            - "27017:27017"
+        volumes:
+            - ./storage/mongo:/data/db
+        networks:
+          - backend
+
+### Redis Container #########################################
+
+    redis:
+        build: ./redis
+        volumes:
+            - ./storage/redis:/data
+        ports:
+            - "6379:6379"
+        networks:
+          - backend
+
+### Aerospike c Container ###################################
+
+    aerospike:
+        build: ./aerospike
+        volumes_from:
+            - workspace
+        volumes:
+            - ./storage/aerospike:/opt/aerospike/data
+        ports:
+            - "3000:3000"
+            - "3001:3001"
+            - "3002:3002"
+            - "3003:3003"
+        networks:
+          - backend
+
+
+### Memcached Container #####################################
+
+    memcached:
+        build: ./memcached
+        volumes:
+            - ./storage/memcached:/var/lib/memcached
+        ports:
+            - "11211:11211"
+        links:
+            - php-fpm
+        networks:
+          - backend
+
+### Beanstalkd Container ####################################
+
+    beanstalkd:
+        build: ./beanstalkd
+        ports:
+            - "11300:11300"
+        privileged: true
+        links:
+            - php-fpm
+        networks:
+          - backend
+
+### RabbitMQ Container ######################################
+
+    rabbitmq:
+        build: ./rabbitmq
+        ports:
+            - "5672:5672"
+            - "15671:15671"
+            - "8080:15672"
+        privileged: true
+        environment:
+            RABBITMQ_DEFAULT_USER: guest
+            RABBITMQ_DEFAULT_PASS: guest
+        links:
+            - php-fpm
+        networks:
+          - backend
+
+### Beanstalkd Console Container ############################
+
+    beanstalkd-console:
+        build: ./beanstalkd-console
+        ports:
+            - "2080:2080"
+        links:
+            - beanstalkd
+        networks:
+          - backend
+
+### Caddy Server Container ##################################
+
+    caddy:
+        build: ./caddy
+        volumes_from:
+            - applications
+        volumes:
+            - ./storage/caddy:/root/.caddy
+        ports:
+            - "80:80"
+            - "443:443"
+            - "2015:2015"
+        volumes:
+            - ./caddy/Caddyfile:/etc/Caddyfile
+            - ./logs/caddy:/var/log/caddy
+        links:
+            - php-fpm
+        networks:
+          - frontend
+          - backend
+
+### phpMyAdmin Container ####################################
+
+    phpmyadmin:
+        build: ./phpmyadmin
+        environment:
+            PMA_ARBITRARY: 1
+            MYSQL_USER: kimhsiao
+            MYSQL_PASSWORD: 1234
+            MYSQL_ROOT_PASSWORD: 1234
+        volumes:
+          - phpmyadmin
+        ports:
+            - "8080:80"
+        links:
+            # for mysql container
+            - "mysql:db"
+            # for mariadb container
+            # - "mariadb:db"
+        networks:
+          - frontend
+          - backend
+
+### pgAdmin Container #######################################
+
+    pgadmin:
+        build: ./pgadmin
+        ports:
+            - "5050:5050"
+        links:
+            - postgres
+        networks:
+          - frontend
+
+### ElasticSearch Container #################################
+
+    elasticsearch:
+        build:
+            context: ./elasticsearch
+            dockerfile: Dockerfile-rtf
+        volumes:
+            - ./storage/elasticsearch/elasticsearch-data:/usr/share/elasticsearch/data
+            - ./storage/elasticsearch/elasticsearch-pkugins:/usr/share/elasticsearch/data
+        ports:
+            - "9200:9200"
+            - "9300:9300"
+        links:
+            - php-fpm
+        networks:
+          - frontend
+
+#### Networks Setup ###
+
+networks:
+  frontend:
+    driver: "bridge"
+  backend:
+    driver: "bridge"
+
+### Volumes Setup ####
+
+volumes:
+  mysql:
+    driver: "local"
+  postgres:
+    driver: "local"
+  memcached:
+    driver: "local"
+  redis:
+    driver: "local"
+  neo4j:
+    driver: "local"
+  mariadb:
+    driver: "local"
+  mongo:
+    driver: "local"
+  minio:
+    driver: "local"
+  phpmyadmin:
+    driver: "local"
+  pgadmin:
+    driver: "local"
+  aerospike:
+    driver: "local"
+  caddy:
+    driver: "local"
+  elasticsearch-data:
+    driver: "local"
+  elasticsearch-plugins:
+    driver: "local"
+  

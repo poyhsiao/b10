@@ -120,7 +120,7 @@ return [
     |
     */
 
-    'log' => env('APP_LOG', 'single'),
+    'log' => env('APP_LOG', 'daily'),
 
     'log_level' => env('APP_LOG_LEVEL', 'debug'),
 
@@ -197,6 +197,11 @@ return [
          */
         Jenssegers\Agent\AgentServiceProvider::class,
 
+        /**
+         * mongodb driver <https://github.com/jenssegers/Laravel-MongoDB>
+         */
+        Jenssegers\Mongodb\MongodbServiceProvider::class,
+
     ],
 
     /*
@@ -249,7 +254,7 @@ return [
         /**
          * laravel image handler <http://image.intervention.io/getting_started/installation>
          */
-        'Image' => Intervention\Image\Facades\Image::class,
+        'ImageConvert' => Intervention\Image\Facades\Image::class,
 
         /**
          * User agent detection <https://github.com/jenssegers/agent>

@@ -1,7 +1,7 @@
 <?php
 /**
  * A helper file for Laravel 5, to provide autocomplete information to your IDE
- * Generated for Laravel 5.4.19 on 2017-04-22.
+ * Generated for Laravel 5.4.19 on 2017-04-23.
  *
  * @author Barry vd. Heuvel <barryvdh@gmail.com>
  * @see https://github.com/barryvdh/laravel-ide-helper
@@ -11583,7 +11583,7 @@ namespace Intervention\Image\Facades {
          * @param \Closure $callback
          * @param integer $lifetime
          * @param boolean $returnObj
-         * @return \Image 
+         * @return \Intervention\Image\Image 
          * @static 
          */
         public static function cache($callback, $lifetime = null, $returnObj = false)
@@ -14179,7 +14179,7 @@ namespace {
         }
         }
     
-    class Image extends \Intervention\Image\Facades\Image {}
+    class ImageConvert extends \Intervention\Image\Facades\Image {}
     
     class Agent extends \Jenssegers\Agent\Facades\Agent {}
     

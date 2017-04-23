@@ -86,6 +86,8 @@ return [
     |
     */
 
-    'prefix' => 'laravel',
+    'prefix' => 'b10',
+
+    'timeout' => env('CACHE_TIMEOUT', 14400),
 
 ];

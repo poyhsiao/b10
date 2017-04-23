@@ -27,18 +27,16 @@ class Image extends Model
     ];
 
     protected $dates = [
-        'last_modified',
+//        'last_modified',
         'created_at',
         'updated_at',
     ];
 
     protected $primaryKey = 'image_id';
 
-    public function setImageIdAttribute()
+    public function imageCache()
     {
-        $id = uniqid();
-
-        return md5($id);
+        return $this->hasMany('App\ImageCache', 'image_id', 'image_id');
     }
 
     public function getSizeAttribue()
